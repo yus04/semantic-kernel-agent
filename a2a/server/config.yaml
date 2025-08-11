@@ -1,0 +1,15 @@
+agent:
+  name: "EchoAgent"
+  description: "An echo agent that returns the same message it receives"
+  version: "1.0.0"
+
+azure_openai:
+  endpoint: "${AZURE_OPENAI_ENDPOINT}"
+  api_key: "${AZURE_OPENAI_API_KEY}"
+  deployment_name: "${AZURE_OPENAI_DEPLOYMENT_NAME}"
+  api_version: "${AZURE_OPENAI_API_VERSION}"
+
+server:
+  host: "${SERVER_HOST}"
+  port: ${SERVER_PORT}
+  debug: true
