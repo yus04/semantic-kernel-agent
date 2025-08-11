@@ -1,0 +1,6 @@
+client:
+  name: "EchoClient"
+  version: "1.0.0"
+
+server:
+  url: "${SERVER_URL}"
