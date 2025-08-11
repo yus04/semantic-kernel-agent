@@ -4,7 +4,6 @@ A2A Echo Client implementation
 import os
 import yaml
 import requests
-import json
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 import click

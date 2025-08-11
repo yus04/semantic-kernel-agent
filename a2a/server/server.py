@@ -13,7 +13,6 @@ import uvicorn
 # Load Semantic Kernel components
 from semantic_kernel import Kernel
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
-from semantic_kernel.contents import ChatHistory
 
 # Local imports
 from echo_plugin import EchoPlugin
@@ -158,6 +157,14 @@ class EchoAgentServer:
         host = host or server_config.get("host", "localhost")
         port = port or server_config.get("port", 8000)
         
+        # Ensure port is an integer (from environment variables, it comes as string)
+        if isinstance(port, str):
+            try:
+                port = int(port)
+            except ValueError:
+                print(f"Warning: Invalid port value '{port}', using default 8000")
+                port = 8000
+
         print(f"Starting A2A Echo Agent Server on {host}:{port}")
         print(f"Agent Card available at: http://{host}:{port}/agent/card")
         print(f"Invoke endpoint: http://{host}:{port}/agent/invoke")
