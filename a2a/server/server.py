@@ -1,163 +1,115 @@
 """
-A2A Echo Agent Server using Semantic Kernel and FastAPI
+A2A Echo Agent Server using Semantic Kernel and A2A SDK
 """
-import os
-import yaml
 import argparse
-from typing import Dict, Any
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 import uvicorn
-
-# Load Semantic Kernel components
-from semantic_kernel import Kernel
-from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
+from a2a.server.apps.jsonrpc.starlette_app import A2AStarletteApplication
+from a2a.server.request_handlers.default_request_handler import DefaultRequestHandler
+from a2a.server.tasks.inmemory_task_store import InMemoryTaskStore
+from a2a.types import AgentCard
 
 # Local imports
-from echo_plugin import EchoPlugin
-from agent_card import AgentCard
+from echo_agent import EchoAgent
+from echo_agent_executor import EchoAgentExecutor
 
 
-class MessageRequest(BaseModel):
-    """Request model for agent invocation"""
-    message: str
-    capability: str = "echo"
-    parameters: Dict[str, Any] = {}
-
-
-class MessageResponse(BaseModel):
-    """Response model for agent invocation"""
-    response: str
-    agent_id: str
-    capability_used: str
+def create_agent_card() -> AgentCard:
+    """
+    Create an AgentCard for the Echo Agent using A2A types
+    
+    Returns:
+        AgentCard instance for the Echo Agent
+    """
+    from a2a.types import AgentSkill, AgentCapabilities
+    
+    # Create skills for the echo agent
+    echo_skill = AgentSkill(
+        id="echo",
+        name="echo",
+        description="Echoes back the input message",
+        input_modes=["text"],
+        output_modes=["text"],
+        examples=["Hello World!"],
+        tags=["echo", "simple"]
+    )
+    
+    echo_with_prefix_skill = AgentSkill(
+        id="echo_with_prefix",
+        name="echo_with_prefix", 
+        description="Echoes back the input message with a prefix",
+        input_modes=["text"],
+        output_modes=["text"],
+        examples=["Hello World! with prefix"],
+        tags=["echo", "prefix"]
+    )
+    
+    # Create capabilities
+    capabilities = AgentCapabilities(
+        streaming=False,
+        push_notifications=False,
+        state_transition_history=False
+    )
+    
+    return AgentCard(
+        name="EchoAgent",
+        description="An echo agent that returns the same message it receives using Semantic Kernel",
+        version="1.0.0",
+        url="http://localhost:8000",
+        skills=[echo_skill, echo_with_prefix_skill],
+        capabilities=capabilities,
+        default_input_modes=["text"],
+        default_output_modes=["text"]
+    )
 
 
 class EchoAgentServer:
     """
-    Echo Agent Server using Semantic Kernel
+    Echo Agent Server using A2A SDK and Semantic Kernel
     """
     
     def __init__(self, config_path: str = "config.yaml"):
-        # Load environment variables
-        load_dotenv()
+        """
+        Initialize the Echo Agent Server
         
-        # Load configuration
-        with open(config_path, 'r', encoding='utf-8') as f:
-            self.config = yaml.safe_load(f)
-        
-        # Substitute environment variables in config
-        self._substitute_env_vars(self.config)
-        
-        # Initialize Semantic Kernel
-        self.kernel = self._initialize_kernel()
-        
-        # Initialize FastAPI app
-        self.app = FastAPI(
-            title="A2A Echo Agent",
-            description="Echo Agent using Semantic Kernel for A2A communication",
-            version="1.0.0"
-        )
-        
-        # Setup routes
-        self._setup_routes()
+        Args:
+            config_path: Path to the configuration file
+        """
+        # Initialize the agent
+        self.agent = EchoAgent(config_path)
         
         # Create agent card
-        self.agent_card = AgentCard.create_echo_agent_card()
-
-    def _substitute_env_vars(self, obj):
-        """Recursively substitute environment variables in config"""
-        if isinstance(obj, dict):
-            for key, value in obj.items():
-                obj[key] = self._substitute_env_vars(value)
-        elif isinstance(obj, list):
-            return [self._substitute_env_vars(item) for item in obj]
-        elif isinstance(obj, str) and obj.startswith("${") and obj.endswith("}"):
-            env_var = obj[2:-1]
-            return os.getenv(env_var, obj)
-        return obj
-
-    def _initialize_kernel(self) -> Kernel:
-        """Initialize Semantic Kernel with Azure OpenAI"""
-        kernel = Kernel()
+        self.agent_card = create_agent_card()
         
-        # Add Azure OpenAI service
-        azure_openai_config = self.config["azure_openai"]
+        # Create task store
+        self.task_store = InMemoryTaskStore()
         
-        chat_completion = AzureChatCompletion(
-            deployment_name=azure_openai_config["deployment_name"],
-            endpoint=azure_openai_config["endpoint"],
-            api_key=azure_openai_config["api_key"],
-            api_version=azure_openai_config["api_version"]
+        # Create request handler with agent executor
+        self.request_handler = DefaultRequestHandler(
+            agent_executor=self.agent.executor,
+            task_store=self.task_store
         )
         
-        kernel.add_service(chat_completion)
-        
-        # Add Echo Plugin
-        echo_plugin = EchoPlugin()
-        kernel.add_plugin(echo_plugin, plugin_name="echo_plugin")
-        
-        return kernel
-
-    def _setup_routes(self):
-        """Setup FastAPI routes"""
-        
-        @self.app.get("/")
-        async def root():
-            return {"message": "A2A Echo Agent Server", "status": "running"}
-        
-        @self.app.get("/agent/card")
-        async def get_agent_card():
-            """Get the AgentCard for this agent"""
-            return self.agent_card.model_dump()
-        
-        @self.app.post("/agent/invoke", response_model=MessageResponse)
-        async def invoke_agent(request: MessageRequest):
-            """Invoke the agent with a message"""
-            try:
-                # Use the Echo Plugin directly for simple echo
-                if request.capability == "echo":
-                    echo_function = self.kernel.get_function("echo_plugin", "echo")
-                    result = await echo_function.invoke(self.kernel, message=request.message)
-                    response_text = str(result)
-                    
-                elif request.capability == "echo_with_prefix":
-                    echo_function = self.kernel.get_function("echo_plugin", "echo_with_prefix")
-                    prefix = request.parameters.get("prefix", "Echo: ")
-                    result = await echo_function.invoke(
-                        self.kernel, 
-                        message=request.message,
-                        prefix=prefix
-                    )
-                    response_text = str(result)
-                    
-                else:
-                    raise HTTPException(
-                        status_code=400, 
-                        detail=f"Unsupported capability: {request.capability}"
-                    )
-                
-                return MessageResponse(
-                    response=response_text,
-                    agent_id=self.agent_card.agent_id,
-                    capability_used=request.capability
-                )
-                
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=str(e))
-        
-        @self.app.get("/health")
-        async def health_check():
-            """Health check endpoint"""
-            return {"status": "healthy", "agent": self.agent_card.name}
-
+        # Create A2A Starlette application
+        self.app = A2AStarletteApplication(
+            agent_card=self.agent_card,
+            http_handler=self.request_handler
+        )
+    
     def run(self, host: str = None, port: int = None):
         """Run the server"""
-        server_config = self.config.get("server", {})
+        # Load config for server settings
+        import yaml
+        with open("config.yaml", 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+        
+        # Substitute environment variables
+        self.agent._substitute_env_vars(config)
+        
+        server_config = config.get("server", {})
         host = host or server_config.get("host", "localhost")
         port = port or server_config.get("port", 8000)
         
-        # Ensure port is an integer (from environment variables, it comes as string)
+        # Ensure port is an integer
         if isinstance(port, str):
             try:
                 port = int(port)
