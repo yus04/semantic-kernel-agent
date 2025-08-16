@@ -10,7 +10,6 @@ from a2a.types import AgentCard
 
 # Local imports
 from echo_agent import EchoAgent
-from echo_agent_executor import EchoAgentExecutor
 
 
 def create_agent_card() -> AgentCard:

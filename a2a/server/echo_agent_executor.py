@@ -1,16 +1,12 @@
 """
 Echo Agent Executor implementation using A2A SDK and Semantic Kernel
 """
-from typing import Optional, Dict, Any
 from a2a.server.agent_execution.agent_executor import AgentExecutor
 from a2a.server.agent_execution.context import RequestContext
 from a2a.server.events.event_queue import EventQueue
-from a2a.types import Message, TextPart, Role, TaskStatusUpdateEvent, TaskArtifactUpdateEvent, Artifact, TaskStatus, TaskState
+from a2a.types import TextPart, TaskStatusUpdateEvent, TaskArtifactUpdateEvent, Artifact, TaskStatus, TaskState
 from semantic_kernel import Kernel
 import uuid
-
-from echo_plugin import EchoPlugin
-
 
 class EchoAgentExecutor(AgentExecutor):
     """
