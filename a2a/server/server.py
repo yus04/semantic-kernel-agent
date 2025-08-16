@@ -118,11 +118,14 @@ class EchoAgentServer:
                 port = 8000
 
         print(f"Starting A2A Echo Agent Server on {host}:{port}")
-        print(f"Agent Card available at: http://{host}:{port}/agent/card")
-        print(f"Invoke endpoint: http://{host}:{port}/agent/invoke")
+        print(f"Agent Card available at: http://{host}:{port}/.well-known/agent-card.json")
+        print(f"Invoke endpoint: http://{host}:{port}/")
+        
+        # Build the actual Starlette app
+        starlette_app = self.app.build()
         
         uvicorn.run(
-            self.app,
+            starlette_app,
             host=host,
             port=port,
             log_level="info"

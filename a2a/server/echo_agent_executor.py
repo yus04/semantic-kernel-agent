@@ -3,7 +3,12 @@ Echo Agent Executor implementation using A2A SDK and Semantic Kernel
 """
 from typing import Optional, Dict, Any
 from a2a.server.agent_execution.agent_executor import AgentExecutor
+from a2a.server.agent_execution.context import RequestContext
+from a2a.server.events.event_queue import EventQueue
+from a2a.utils.message import MessageToDict
+from a2a.types import Message, TextPart, Role
 from semantic_kernel import Kernel
+import uuid
 
 from echo_plugin import EchoPlugin
 
@@ -22,47 +27,53 @@ class EchoAgentExecutor(AgentExecutor):
         """
         self.kernel = kernel
         
-    async def execute(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         """
         Execute the agent request
         
         Args:
-            request_data: The request data containing message, capability, and parameters
-            
-        Returns:
-            The response from the agent execution
+            context: The request context containing the message and metadata
+            event_queue: Event queue for publishing results
         """
         try:
-            message = request_data.get("message", "")
-            capability = request_data.get("capability", "echo")
-            parameters = request_data.get("parameters", {})
+            # Get the message from the context
+            message = context.message
             
-            if capability == "echo":
-                echo_function = self.kernel.get_function("echo_plugin", "echo")
-                result = await echo_function.invoke(self.kernel, message=message)
-                response_text = str(result)
-                
-            elif capability == "echo_with_prefix":
-                echo_function = self.kernel.get_function("echo_plugin", "echo_with_prefix")
-                prefix = parameters.get("prefix", "Echo: ")
-                result = await echo_function.invoke(
-                    self.kernel, 
-                    message=message,
-                    prefix=prefix
-                )
-                response_text = str(result)
-                
-            else:
-                raise ValueError(f"Unsupported capability: {capability}")
-                
-            return {
-                "response": response_text,
-                "agent_id": "echo-agent-v1",
-                "capability_used": capability
-            }
+            # Extract text content from message parts
+            text_content = ""
+            for part in message.parts:
+                if hasattr(part, 'text'):
+                    text_content += part.text
+                elif hasattr(part, 'root') and hasattr(part.root, 'text'):
+                    text_content += part.root.text
+            
+            # For now, just use the echo capability
+            echo_function = self.kernel.get_function("echo_plugin", "echo")
+            result = await echo_function.invoke(self.kernel, message=text_content)
+            response_text = str(result)
+            
+            # Create response message
+            response_message = Message(
+                message_id=str(uuid.uuid4()),
+                role=Role.agent,
+                parts=[TextPart(text=response_text)]
+            )
+            
+            # Convert to dict for event queue
+            response_dict = MessageToDict(response_message)
+            
+            # Send response through event queue
+            await event_queue.put({
+                "type": "message",
+                "message": response_dict
+            })
             
         except Exception as e:
-            raise Exception(f"Error executing agent request: {str(e)}")
+            # Send error through event queue
+            await event_queue.put({
+                "type": "error",
+                "error": f"Error executing agent request: {str(e)}"
+            })
     
     async def cancel(self, task_id: str) -> bool:
         """
