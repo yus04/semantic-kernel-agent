@@ -6,6 +6,7 @@ import yaml
 import click
 import asyncio
 import requests
+import uuid
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
@@ -77,18 +78,21 @@ class A2AEchoClient:
             parameters = {}
             
         try:
-            request_data = {
-                "message": message,
-                "capability": capability,
-                "parameters": parameters
-            }
-            
-            # Use A2A SDK compatible JSON-RPC format
+            # Use A2A SDK compatible JSON-RPC format with proper Message structure
             jsonrpc_payload = {
                 "jsonrpc": "2.0",
-                "method": "SendMessage",
+                "method": "message/send",
                 "params": {
-                    "message": request_data
+                    "message": {
+                        "messageId": f"client-{uuid.uuid4()}",
+                        "role": "user",
+                        "parts": [
+                            {
+                                "kind": "text",
+                                "text": message
+                            }
+                        ]
+                    }
                 },
                 "id": 1
             }
@@ -101,8 +105,16 @@ class A2AEchoClient:
             response.raise_for_status()
             
             result = response.json()
-            if "result" in result and "response" in result["result"]:
-                return result["result"]["response"]
+            if "result" in result:
+                # Extract text from artifacts
+                artifacts = result["result"].get("artifacts", [])
+                if artifacts:
+                    for artifact in artifacts:
+                        parts = artifact.get("parts", [])
+                        for part in parts:
+                            if part.get("kind") == "text":
+                                return part.get("text")
+                return result["result"].get("id", "Task completed")
             else:
                 return result.get("result")
             

@@ -5,24 +5,25 @@ This repository contains an A2A (Agent-to-Agent) sample implementation using Sem
 ## Overview
 
 The project implements:
-- **A2A Echo Agent Server**: Uses Semantic Kernel with Azure OpenAI Service
-- **A2A Client**: Command-line interface for interacting with the agent
-- **EchoPlugin**: Custom Semantic Kernel plugin for echo functionality
-- **AgentCard**: A2A standard agent discovery and capability description
+- **A2A Echo Agent Server**: Uses Semantic Kernel with Azure OpenAI Service and a2a-sdk
+- **A2A Client**: Command-line interface for interacting with the agent using A2A protocol
+- **EchoPlugin**: Custom Semantic Kernel plugin for echo functionality  
+- **AgentCard**: A2A standard agent discovery and capability description using a2a-sdk types
 
 ## Architecture
 
 ```
 a2a/
 ├── server/          # Echo Agent Server
-│   ├── server.py    # FastAPI server with Semantic Kernel
-│   ├── echo_plugin.py     # Custom Semantic Kernel plugin
-│   ├── agent_card.py      # AgentCard implementation
-│   ├── config.yaml        # Server configuration
-│   ├── .env              # Environment variables
-│   └── requirements.txt   # Server dependencies
+│   ├── server.py              # A2A server using A2AStarletteApplication
+│   ├── echo_agent.py          # Agent implementation with invoke function
+│   ├── echo_agent_executor.py # AgentExecutor subclass with execute/cancel
+│   ├── echo_plugin.py         # Custom Semantic Kernel plugin
+│   ├── config.yaml            # Server configuration
+│   ├── .env                   # Environment variables
+│   └── requirements.txt       # Server dependencies
 └── client/          # A2A Client
-    ├── client.py    # Command-line client
+    ├── client.py    # A2A-compatible command-line client
     ├── config.yaml  # Client configuration
     ├── .env         # Environment variables
     └── requirements.txt   # Client dependencies
