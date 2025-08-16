@@ -69,7 +69,6 @@ python client.py interactive
 ### Server Features
 - **Semantic Kernel Integration**: Uses Semantic Kernel for AI agent functionality
 - **Azure OpenAI Service**: Integrates with Azure OpenAI for AI capabilities
-- **FastAPI Framework**: RESTful API with automatic documentation
 - **AgentCard Support**: Standard A2A agent discovery
 - **EchoPlugin**: Custom plugin demonstrating Semantic Kernel extensibility
 - **Configurable**: Environment-based configuration with YAML support

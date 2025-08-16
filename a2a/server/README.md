@@ -1,13 +1,12 @@
 # A2A Echo Agent Server
 
-A2A (Agent-to-Agent) Echo Agent Server implementation using Semantic Kernel and FastAPI.
+A2A (Agent-to-Agent) Echo Agent Server implementation using Semantic Kernel.
 
 ## Overview
 
 This server implements an echo agent that returns the same message it receives. It uses:
 - **Semantic Kernel** for AI agent functionality
 - **Azure OpenAI Service** for AI model integration
-- **FastAPI** for web framework
 - **uvicorn** as ASGI server
 - **EchoPlugin** custom implementation for Semantic Kernel
 
@@ -45,34 +44,6 @@ python server.py --host 0.0.0.0 --port 8080
 With custom config file:
 ```bash
 python server.py --config custom_config.yaml
-```
-
-## API Endpoints
-
-- `GET /` - Server status
-- `GET /agent/card` - Get AgentCard information
-- `POST /agent/invoke` - Invoke the agent with a message
-- `GET /health` - Health check
-
-### Example Usage
-
-Get agent card:
-```bash
-curl http://localhost:8000/agent/card
-```
-
-Invoke echo capability:
-```bash
-curl -X POST http://localhost:8000/agent/invoke \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Hello World!", "capability": "echo"}'
-```
-
-Invoke echo with prefix:
-```bash
-curl -X POST http://localhost:8000/agent/invoke \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Hello World!", "capability": "echo_with_prefix", "parameters": {"prefix": "Echo: "}}'
 ```
 
 ## Agent Capabilities
